@@ -1,0 +1,384 @@
+---
+title: "Sentiment Analysis for Amazon Phone Reviews"
+author: "Andrew Zhang"
+date: "12/16/2018"
+output: ioslides_presentation
+---
+## Background
+
+* Amazon is a huge marketplace for items
+    + School supplies, food, electronics
+* Customers leave reviews for items
+    + Ratings, comments
+* Ratings system for each item
+    + 1 to 5 rating
+
+## Goals
+* Sentiment Analysis
+* Understand the differences between positive and negative sentiments
+    + Unique characteristics of reviews?
+
+```{r, include = FALSE}
+setwd("/Users/andrewzhang/Desktop/School/Graduate/MA615/MA615 Final Project")
+amazon <- read.csv("Amazon_Unlocked_Mobile.csv")
+```
+
+```{r, include = FALSE}
+library(knitr)
+variable_names <- colnames(amazon)
+descriptions <- c('Name of the Product',
+'Company that created the product',
+'Amount of money for the product',
+'Rating a customer gives the product(Out of 5)',
+'Written comments regarding the product',
+'Number of votes a review gets')
+var_table <- data.frame(variable_names, descriptions)
+```
+
+## Variables
+
+```{r, echo = FALSE}
+kable(var_table, caption = "Variables")
+```
+
+```{r, subset, include = FALSE}
+library(caret)
+library(dplyr)
+
+amazon$Brand.Name <- tolower(as.character(amazon$Brand.Name))
+
+amazon_counts <- amazon %>% 
+  count(Product.Name, sort = TRUE)
+
+amazon_counts2 <- amazon %>% 
+  count(Brand.Name, sort = TRUE)
+
+brand_counts <- amazon %>% 
+  group_by(Product.Name) %>% 
+  count(Product.Name, sort = TRUE) 
+
+sub <- brand_counts[brand_counts$n > 800,]
+
+amazon_sub <- amazon[amazon$Product.Name %in% sub$Product.Name, ]
+
+amazon_sub <- amazon_sub %>% 
+  group_by(Product.Name) %>% 
+  mutate(id = row_number())
+
+amazon_sub$Brand.Name[amazon_sub$Brand.Name == "samsung korea ltd"] <- "samsung"
+```
+
+```{r, include = FALSE}
+library(tidyverse)
+str(amazon_sub)
+
+amazon_sub[amazon_sub$Brand.Name == "",] <- NA
+colSums(is.na(amazon_sub))
+amazon_sub <- na.omit(amazon_sub)
+
+brand_counts <- amazon_sub %>% 
+  group_by(Brand.Name) %>% 
+  summarize(Count = length(Brand.Name))
+
+length(unique(amazon_sub$Product.Name))
+length(unique(amazon_sub$Brand.Name))
+
+new <- c()
+new <- data.frame(lapply(amazon_sub$Reviews, as.character), stringsAsFactors = FALSE)
+trans_new <- t(new)
+amazon_sub$Reviews <- trans_new[1:54198]
+
+amazon_sub$Word_Count <- sapply(strsplit(amazon_sub$Reviews, " "), length)
+
+amazon_explore <- amazon_sub %>% 
+  group_by(Product.Name, Brand.Name) %>% 
+  summarize(Price.Avg = mean(Price),
+            Rating.Avg = mean(Rating),
+            ReviewVotes.Avg = mean(Review.Votes),
+            WordCount.Avg = mean(Word_Count))
+```
+
+```{r, include = FALSE}
+install.packages("corrplot", repos='http://cran.us.r-project.org')
+library(corrplot)
+
+cor_sub <- amazon_explore %>% 
+  select(Price.Avg, Rating.Avg, ReviewVotes.Avg, WordCount.Avg)
+cor_sub$Product.Name <- NULL
+
+amazon_cor <- cor(cor_sub)
+```
+
+## Data Cleaning/Exploration
+
+* Look at the structure of the data
+* Clean out missing data
+* Aggregate data for exploration
+* Positive and Negative sentiments
+* Add word counts
+* Filter data for biggest brands
+
+## Correlation Plot
+
+```{r, echo = FALSE, out.width = "75%", fig.align="center"}
+corrplot(amazon_cor, method = "ellipse")
+```
+
+* Ratings/Price are positively correlated
+* Word Counts/Review Votes are positive correlated
+* Ratings/Review Votes are negatively correlated
+
+```{r, exploratory plots, include = FALSE}
+library(ggpubr)
+library(magrittr)
+ep1 <- ggplot(amazon_explore) +
+  aes(ReviewVotes.Avg, Rating.Avg) +
+  geom_point() +
+  geom_smooth(method = lm) +
+  theme_minimal() +
+  labs(title = "Review Votes vs. Ratings")
+
+ep2 <- ggplot(amazon_explore) +
+  aes(log(Price.Avg), Rating.Avg) +
+  geom_point() +
+  geom_smooth(method = lm) +
+  theme_minimal() +
+  labs(title = "Price vs. Rating")
+
+ep3 <- ggplot(amazon_explore) +
+  aes(log(WordCount.Avg), Rating.Avg) +
+  geom_point() +
+  geom_smooth(method = lm) +
+  theme_minimal() +
+  labs(title = "Word Counts vs. Rating")
+
+ep4 <- ggplot(amazon_explore) +
+  aes(log(Price.Avg), log(WordCount.Avg)) +
+  geom_point() +
+  geom_smooth(method = lm) +
+  theme_minimal() +
+  labs(title = "Price vs. Word Count")
+```
+
+```{r, sentiment analysis, include = FALSE}
+library(tidytext)
+colnames(amazon_sub)[5] <- c("text")
+review_words <- amazon_sub %>% unnest_tokens(output = word, input = text)
+
+data("stop_words")
+tidy_words <- review_words %>%
+  anti_join(stop_words)
+```
+
+```{r, get positive/negative, include = FALSE}
+afinn <- get_sentiments("afinn")
+nrc <- get_sentiments("nrc")
+bing <- get_sentiments("bing")
+
+rw_bing <- tidy_words %>% 
+  inner_join(bing)
+
+rw_bingafinn <- rw_bing %>% 
+  inner_join(afinn, by = "word")
+
+## Explore number of positive words and negative words
+rw_explore <- rw_bingafinn %>% 
+  group_by(Product.Name, Brand.Name, sentiment) %>% 
+  summarize(Price.Avg = mean(Price),
+            Rating.Avg = mean(Rating),
+            ReviewVotes.Avg = mean(Review.Votes),
+            WordCount.Avg = mean(Word_Count), 
+            Score.Avg = mean(score))
+```
+
+## Negative vs. Positive Distribution
+```{r, plot sentiments, echo = FALSE, out.width = "75%", fig.align="center"}
+ggplot(data = rw_explore) +
+  aes(x = reorder(Product.Name, WordCount.Avg), color = sentiment, weight = WordCount.Avg) +
+  geom_bar(fill = '#0c4c8a') +
+  labs(title = 'Sentiment Counts',
+    x = 'Product Name',
+    y = 'Number of Words') +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  coord_flip()
+```
+
+* More words for negative reviews
+* Potentially more descriptive
+
+```{r, preprocess, include = FALSE}
+str(rw_bingafinn)
+
+rw_bingafinn$Brand.Name <- factor(rw_bingafinn$Brand.Name)
+rw_bingafinn$Price <- log(rw_bingafinn$Price)
+rw_bingafinn$Review.Votes[rw_bingafinn$Review.Votes == 0] <- 1
+rw_bingafinn$Review.Votes <- log(rw_bingafinn$Review.Votes)
+rw_bingafinn$Word_Count <- log(rw_bingafinn$Word_Count)
+
+colSums(is.na(rw_bingafinn))
+rw_bingafinn <- na.omit(rw_bingafinn)
+```
+
+# Pattern Analysis
+
+## Ratings vs. Price
+```{r, EDA, echo = FALSE, warning=FALSE, out.width = "75%", fig.align="center"}
+#esquisse::esquisser(rw_bingafinn)
+library(ggplot2)
+
+ggplot(data = rw_bingafinn) +
+  aes(x = Rating, y = Price, color = sentiment) +
+  geom_point() +
+  theme_minimal() +
+  facet_wrap(vars(Brand.Name)) +
+  labs(title = "Ratings vs. Price")
+```
+
+* Negative sentiment = lower rating
+* Positive sentiment = higher rating
+
+## Word Count vs. Review Votes
+```{r, echo = FALSE, out.width = "75%", fig.align="center"}
+ggplot(data = rw_bingafinn) +
+  aes(x = Word_Count, y = Review.Votes, color = sentiment) +
+  geom_point() +
+  geom_smooth(method = lm) +
+  theme_minimal() +
+  facet_wrap(vars(Brand.Name)) + 
+  labs(title = "Word Count vs. Review Votes")
+```
+
+* Upward trend for both positive and negative sentiments
+* More words can lead to a higher number of review votes
+
+## Ratings vs. Review Votes
+```{r, echo = FALSE, out.width = "75%", fig.align="center"}
+ggplot(data = rw_bingafinn) +
+  aes(x = Rating, y = Review.Votes, color = Brand.Name) +
+  geom_point() +
+  geom_smooth(method = lm) +
+  theme_minimal() +
+  labs(title = "Ratings vs. Review.Votes")
+```
+
+* Increase in ratings means a decrease in review votes
+* Inverse relationship
+* Reflective of negative correlation
+
+```{r, include = FALSE}
+ggplot(data = rw_bingafinn) +
+  aes(x = sentiment) +
+  geom_bar(fill = '#0c4c8a') +
+  theme_minimal() + 
+  labs(title = "Positive vs. Negative Distribution")
+```
+
+## Distribution of Word Counts
+```{r, echo = FALSE, out.width = "80%", fig.align="center"}
+ggplot(data = rw_bingafinn) +
+  aes(x = Word_Count, color = sentiment) +
+  geom_histogram(bins = 30, fill = '#0c4c8a') +
+  labs(title = 'Distribution of Word Counts') +
+  theme_minimal() +
+  facet_wrap(vars(Brand.Name))
+```
+
+* Significantly more words for negative sentiment than positive words
+
+## Review Meanings
+```{r, plots, echo = FALSE, out.width = "75%", fig.align="center"}
+words_brand <- tidy_words %>% 
+  group_by(Brand.Name) %>% 
+  count(word, sort = TRUE)
+
+words_count <- tidy_words %>% 
+  group_by(word) %>% 
+  count(word, sort = TRUE)
+
+words_count %>%
+  filter(n > 2900) %>% 
+  ggplot(aes(x = reorder(word, n), y = n)) +
+  geom_col(fill = '#0c4c8a') +
+  xlab(NULL) +
+  labs(title = "Most Popular Words") +
+  coord_flip()
+```
+
+* *phone* is the most popular word in all reviews
+* Words are mainly feature related
+* iphone and Samsungs are incredibly popular
+
+```{r, bing word count, include = FALSE}
+bing_word_counts <- tidy_words %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+bing_word_counts
+```
+
+## Review Meanings cont.
+```{r, echo = FALSE, out.width = "70%", fig.align="center"}
+bing_word_counts %>%
+  group_by(sentiment) %>%
+  top_n(20) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x = reorder(word, n), y = n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Contribution to sentiment",
+       x = NULL) +
+  coord_flip()
+```
+
+* Positive words are subjective
+* Negative words seem to be more feature based and technical
+* Negative words get more votes and words
+
+```{r, include = FALSE}
+install.packages("benford.analysis", repos='http://cran.us.r-project.org')
+library(benford.analysis)
+library(tidyverse)
+
+## Product Counts
+revcounts <- amazon_counts$n
+
+revcounts_b <- benford(revcounts)
+
+chisq(revcounts_b)
+
+## Brand Counts
+revcounts2 <- amazon_counts2$n
+
+revcounts_b2 <- benford(revcounts2)
+
+chisq(revcounts_b2)
+```
+
+# Benford Analysis
+## Benford Analysis for Product Names
+```{r, echo = FALSE, fig.align="center"}
+plot(revcounts_b)
+```
+
+## Benford Analysis for Brand Names
+```{r, echo = FALSE, fig.align="center"}
+plot(revcounts_b2)
+```
+
+## Conclusion
+* Negative reviews had more words than positive reviews
+* The more words in a review, the more review votes it had
+    + Sincere reviews have more words
+* Negative reviews have more words
+    + More words = more review votes
+    + Negative reviews have more review votes
+* Product Names and Brand Name don't follow Benford
+    + Fake reviews/"meme" reviews
+
+## Future Works
+* In depth sentiment analysis for brands
+    + Apple, Samsung
+* Creating models based on ratings, prices, number of words, etc
