@@ -1,0 +1,12 @@
+name: Sentiment_Analysis_Amazon_Reviews
+title: Sentiment_Analysis_Amazon_Reviews
+username:
+account: zhangyandrew
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 618511
+bundleId: 1767915
+url: https://zhangyandrew.shinyapps.io/Sentiment_Analysis_Amazon_Reviews/
+when: 1545032191.91968
+asMultiple: FALSE
+asStatic: FALSE

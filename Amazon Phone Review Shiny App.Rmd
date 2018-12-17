@@ -1,0 +1,115 @@
+---
+title: "Amazon Review Shiny App"
+author: "Andrew Zhang"
+date: "12/17/2018"
+output: pdf_document
+---
+
+```{r, shiny}
+library(shiny)
+library(ggpubr)
+library(tidytext)
+library(caret)
+library(dplyr)
+library(tidyr)
+
+amazon <- read.csv("Amazon_Unlocked_Mobile.csv")
+
+amazon$Brand.Name <- tolower(as.character(amazon$Brand.Name))
+
+amazon_counts <- amazon %>% 
+  count(Product.Name, sort = TRUE)
+
+amazon_counts2 <- amazon %>% 
+  count(Brand.Name, sort = TRUE)
+
+brand_counts <- amazon %>% 
+  group_by(Product.Name) %>% 
+  count(Product.Name, sort = TRUE) 
+
+sub <- brand_counts[brand_counts$n > 800,]
+
+amazon_sub <- amazon[amazon$Product.Name %in% sub$Product.Name, ]
+
+amazon_sub <- amazon_sub %>% 
+  group_by(Product.Name) %>% 
+  mutate(id = row_number())
+
+amazon_sub$Brand.Name[amazon_sub$Brand.Name == "samsung korea ltd"] <- "samsung"
+
+amazon_sub[amazon_sub$Brand.Name == "",] <- NA
+colSums(is.na(amazon_sub))
+amazon_sub <- na.omit(amazon_sub)
+
+brand_counts <- amazon_sub %>% 
+  group_by(Brand.Name) %>% 
+  summarize(Count = length(Brand.Name))
+
+length(unique(amazon_sub$Product.Name))
+length(unique(amazon_sub$Brand.Name))
+
+new <- c()
+new <- data.frame(lapply(amazon_sub$Reviews, as.character), stringsAsFactors = FALSE)
+trans_new <- t(new)
+amazon_sub$Reviews <- trans_new[1:54198]
+
+amazon_sub$Word_Count <- sapply(strsplit(amazon_sub$Reviews, " "), length)
+
+colnames(amazon_sub)[5] <- c("text")
+review_words <- amazon_sub %>% unnest_tokens(output = word, input = text)
+
+data("stop_words")
+tidy_words <- review_words %>%
+  anti_join(stop_words)
+
+# Define UI ----
+ui <- fluidPage(
+     titlePanel("Sentiment Reviews per Phone"),
+      # Input: Slider for the number of bins ----
+     sidebarLayout(
+       sidebarPanel(
+         selectInput(inputId = "Top.Brand.Name", label = "Mobile Phone Brands",
+                     choices = unique(amazon_sub$Brand.Name),
+                 helpText("Choose which brand you'd like to observe"), 
+                 multiple = FALSE)
+       ),
+     mainPanel(
+       plotOutput("plot")
+       )
+     )
+)
+
+# Define server logic ----
+server <- function(input, output, session) {
+  afinn4 <- reactive(tidy_words %>%
+  filter(Brand.Name == input$Top.Brand.Name) %>% 
+  inner_join(get_sentiments("afinn")) %>% 
+  group_by(index = id) %>% 
+  summarize(sentiment = sum(score)) %>% 
+  mutate(method = "AFINN"))
+  
+  bing_and_nrc4 <- reactive(bind_rows(tidy_words %>% 
+                               filter(Brand.Name == input$Top.Brand.Name) %>% 
+                               inner_join(get_sentiments("bing")) %>%
+                               mutate(method = "Bing et al."),
+                             tidy_words %>% 
+                               inner_join(get_sentiments("nrc") %>% 
+                                            filter(sentiment %in% 
+                                                     c("positive", 
+                                                       "negative"))) %>% 
+                               filter(Brand.Name == input$Top.Brand.Name) %>% 
+                               mutate(method = "NRC")) %>% 
+    count(method, index = id, sentiment) %>% 
+    spread(sentiment, n, fill = 0) %>% 
+    mutate(sentiment = positive - negative))
+  output$plot <- renderPlot(
+    ggplot(bind_rows(afinn4(), bing_and_nrc4()), aes(index, sentiment, fill = 
+                                                   method)) +
+      geom_col(show.legend = FALSE) +
+      facet_wrap(~method, ncol = 1, scales = "free_y")
+    )
+}
+
+# Run the app ----
+shinyApp(ui = ui, server = server)
+```

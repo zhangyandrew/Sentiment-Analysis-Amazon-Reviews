@@ -12,7 +12,6 @@ Amazon is a huge marketplace for a variety of products, ranging from school mate
 Amazon has been expanding their market reaches to almost every industry in the world and the mobile device industry is no exception. Amazon has been marketing cellular devices from a wide variety of companies such as Apple and Samsung. What makes Amazon unique is the fact that every product has readily available reviews from previous customers, whereas, company sites such as Apple, do not include such reviews. However, we are curious as to how useful these reviews are and whether or not they are genuine. For this project, we utilize sentiment analysis to explore the general characteristics of reviews and apply Benford analysis to determine the validity of these reviews. 
 
 ```{r, include = FALSE}
-setwd("/Users/andrewzhang/Desktop/School/Graduate/MA615/MA615 Final Project")
 amazon <- read.csv("Amazon_Unlocked_Mobile.csv")
 ```
 
@@ -373,61 +372,3 @@ Another aspect worth looking into is creating a model for predicting either rati
 
 # Acknowledgement
 Special thank you to Professor Wright for spending so much time teaching and creating so many unique assignments and projects this semester. 
-
-# Shiny App
-
-```{r, shiny}
-library(shiny)
-library(ggpubr)
-
-# Define UI ----
-ui <- fluidPage(
-     titlePanel("Sentiment Reviews per Phone"),
-      # Input: Slider for the number of bins ----
-     sidebarLayout(
-       sidebarPanel(
-         selectInput(inputId = "Top.Brand.Name", label = "Mobile Phone Brands",
-                     choices = unique(amazon_sub$Brand.Name),
-                 helpText("Choose which brand you'd like to observe"), 
-                 multiple = FALSE)
-       ),
-     mainPanel(
-       plotOutput("plot")
-       )
-     )
-)
-
-# Define server logic ----
-server <- function(input, output, session) {
-  afinn4 <- reactive(tidy_words %>%
-  filter(Brand.Name == input$Top.Brand.Name) %>% 
-  inner_join(get_sentiments("afinn")) %>% 
-  group_by(index = id) %>% 
-  summarize(sentiment = sum(score)) %>% 
-  mutate(method = "AFINN"))
-  
-  bing_and_nrc4 <- reactive(bind_rows(tidy_words %>% 
-                               filter(Brand.Name == input$Top.Brand.Name) %>% 
-                               inner_join(get_sentiments("bing")) %>%
-                               mutate(method = "Bing et al."),
-                             tidy_words %>% 
-                               inner_join(get_sentiments("nrc") %>% 
-                                            filter(sentiment %in% 
-                                                     c("positive", 
-                                                       "negative"))) %>% 
-                               filter(Brand.Name == input$Top.Brand.Name) %>% 
-                               mutate(method = "NRC")) %>% 
-    count(method, index = id, sentiment) %>% 
-    spread(sentiment, n, fill = 0) %>% 
-    mutate(sentiment = positive - negative))
-  output$plot <- renderPlot(
-    ggplot(bind_rows(afinn4(), bing_and_nrc4()), aes(index, sentiment, fill = 
-                                                   method)) +
-      geom_col(show.legend = FALSE) +
-      facet_wrap(~method, ncol = 1, scales = "free_y")
-    )
-}
-
-# Run the app ----
-shinyApp(ui = ui, server = server)
-```
