@@ -6,7 +6,7 @@ output: pdf_document
 ---
 
 # Abstract
-Amazon is a huge marketplace for a variety of products, ranging from school material to beauty care. With such a huge customer base, each of the products has an option for reviews. Looking specifically at phones, we are interested in any patterns associated with mobile phone reviews. In addition, we want to see whether or not the number of words per review follows the benford distribution. Following our analysis, we were able to conclude that there is a stark difference between negative and positive reviews in terms of word counts and word types.
+Amazon is a huge marketplace for a variety of products, ranging from school material to beauty care. With such a huge customer base, Amazon provides each of the products with an option for reviews. Looking specifically at phones, we are interested in any patterns associated with mobile phone reviews. In addition, we want to see whether or not the number of words per review follows the benford distribution. Following our analysis, we were able to conclude that there is a stark difference between negative and positive reviews in terms of word counts and word types and the data does not follow a benford distribution.
 
 # Background
 Amazon has been expanding their market reaches to almost every industry in the world and the mobile device industry is no exception. Amazon has been marketing cellular devices from a wide variety of companies such as Apple and Samsung. What makes Amazon unique is the fact that every product has readily available reviews from previous customers, whereas, company sites such as Apple, do not include such reviews. However, we are curious as to how useful these reviews are and whether or not they are genuine. For this project, we utilize sentiment analysis to explore the general characteristics of reviews and apply Benford analysis to determine the validity of these reviews. 
@@ -107,7 +107,7 @@ First and foremost, we looked at the structure of the data to ensure each variab
 corrplot(amazon_cor, method = "ellipse")
 ```
 
-We want to look at the variables to see which of the variables are correlated with one another, whether it be trivially or not. Above, we can see that Ratings and Prices are slightly correlated while Word Counts and Review Votes are also correlated. Being positively correlated means that there is a positive relationship where an increase in one variable would mean an increase in the other. Meanwhile, Ratings and Review Votes are negatively correlated, meaning an increase in ratings would mean a decrease in number of review votes. This is something we should pay attention and will discuss further in the analysis. 
+We want to look at the variables to see which of the variables are correlated with one another, whether it be trivial or not. Above, we can see that Ratings and Prices are slightly correlated while Word Counts and Review Votes are also correlated. Being positively correlated means that there is a positive relationship where an increase in one variable would mean an increase in the other. Meanwhile, Ratings and Review Votes are negatively correlated, meaning an increase in ratings would mean a decrease in number of review votes. This is something we pay attention to and will discuss further in the report. 
 
 Next, we will look at some exploratory plots for the aggregated data. 
 
@@ -147,7 +147,7 @@ ep4 <- ggplot(amazon_explore) +
 ggarrange(ep1, ep2, ep3, ep4, ncol=2, nrow = 2)
 ```
 
-From the graphs above, it is difficult to make any conclusions between any of these variables as, even though the regression line points in a certain direction, there is too much noise and variance in the datapoints to soundly conclude a positive or negative relationship between variables. 
+From the graphs above, it is difficult to make any conclusions between any of these variables as, even though the regression lines have a positive or negative trend, there is too much noise and variance in the datapoints to soundly conclude a positive or negative relationship between variables. 
 
 ```{r, sentiment analysis, include = FALSE}
 library(tidytext)
@@ -220,7 +220,7 @@ ggplot(data = rw_bingafinn) +
   labs(title = "Ratings vs. Price")
 ```
 
-Continuing on our exploratory plots from earlier in the report, it's still hard to find clear patterns within the data. Looking at the correlated variables within the full dataset, it's hard to decipher any relationship between the variables as many of the points are the same. Examining the Ratings vs. Prices plot, we can see that the majority of the negative sentiment is on the lower end of the rating scale while the positive sentiment is on the higher end of the rating scale, indicating more positive reviews mean higher ratings while more negative reviews mean lower ratings. 
+Continuing from our exploratory plots from earlier in the report, it's still hard to find clear patterns within the data. Looking at the correlated variables within the full dataset, it's hard to decipher any relationship between the variables as many of the points are the same. Examining the Ratings vs. Prices plot, we can see that the majority of the negative sentiments is on the lower end of the rating scale while the positive sentiments are on the higher end of the rating scale. This indicates more positive reviews mean higher ratings while more negative reviews mean lower ratings. 
 
 ```{r, echo = FALSE, out.width = "85%", fig.align="center"}
 ggplot(data = rw_bingafinn) +
@@ -232,7 +232,7 @@ ggplot(data = rw_bingafinn) +
   labs(title = "Word Count vs. Review Votes")
 ```
 
-Next, if we look at the plots for the Review Votes against the Word_Counts, we can see that both negative and positive sentiments have an upward trend, which signify that more words in a review can be associated with a higher number of votes for a particular review. We also know that a larger number of words indicates a lower rating or more negative sentiment, so we can tentatively say that people vote for more negative reviews.
+Next, if we look at the plots for the Review Votes against the Word_Counts, we can see that both negative and positive sentiments have an upward trend, which signify that more words in a review can be associated with a higher number of votes for a particular review. We also know that a larger number of words indicates a lower rating or more negative sentiment, so we can tentatively say that more people vote for more negative reviews.
 
 ```{r, echo = FALSE, out.width = "85%", fig.align="center"}
 ggplot(data = rw_bingafinn) +
@@ -290,7 +290,7 @@ Looking at the most popular words, we can see that the word *phone* is easily th
 - *Battery*
 - *Camera*
 - *Sim*
-- *apps*
+- *Apps*
 
 Interestingly, we can also see the word *iphone* and *samsung* on the list. Although we filtered the brands to only reflect the most popular brands, we can see that two of the most popular brands are Apple and Samsung as many people include the product/brand name in their reviews. 
 
@@ -317,7 +317,7 @@ bing_word_counts %>%
   coord_flip()
 ```
 
-From the figure above, we look at the words that contribute the most to the bing sentiment. Looking at the positive graph, we can see that, most of these words are subjective towards the phone; love, nice, pretty, etc. If we look at the negative graph, most of these words are related to technical aspects of these phones; slow, lag, issues, cheap, etc. This helps show the focus of both positive and negative reviews, where positive reviews are often subjective and emotionally driven, while negative reviews are harsh criticisms on the device features. 
+From the figure above, we look at the words that contribute the most to the bing sentiment. Looking at the positive graph, we can see that, most of these words are subjective towards the phone; love, nice, pretty, etc. If we look at the negative graph, most of these words are related to technical aspects of these phones; slow, lag, issues, cheap, etc. This helps show the focus of both positive and negative reviews, where positive reviews are often subjective and emotionally driven, while negative reviews are criticisms on the device features. 
 
 ```{r, include = FALSE}
 install.packages("benford.analysis", repos='http://cran.us.r-project.org')
@@ -361,9 +361,9 @@ Second, we also discovered that the number of review votes were associated with 
 
 Lastly, utilizing the previous two conclusions regarding number of review votes being associated with word counts and negative ratings having more words per review, we can draw the conclusion that negative ratings have more words per review, which follows the negative correlation displayed in the correlation plot.
 
-On top of negative vs. positive reviews, we can look at company specific reviews. If we look at the distribution of word counts divided by companies in the plot earlier in the report, we can see there is a significant difference in how reviews are distributed. We expect larger companies like Apple and Samsung to dominate the board, however, we really only see Samsung and Blu. Apple doesn't a significantly large number of mobile reviews even though the iPhone is one of the most popular phones in the world. Doing some research, both Samsung and Blu have had issues with their phones recently. As we all know, Samsung had the exploding phone issue not too long ago, while Blu has recently been dealing with public backlash for chinese spyware on their phones. With such issues, we might come to the conclusion that people are filling more and more complaints against these companies for any tiny issues with their mobile devices. 
+On top of negative vs. positive reviews, we can look at company specific reviews. If we look at the distribution of word counts divided by companies in the plot earlier in the report, we can see there is a significant difference in how reviews are distributed. We expect larger companies like Apple and Samsung to dominate the board, however, we really only see Samsung and Blu. Apple doesn't have a significantly large number of mobile reviews even though the iPhone is one of the most popular phones in the world. Doing some research, both Samsung and Blu have had issues with their phones recently. As we all know, Samsung had the exploding phone issue not too long ago, while Blu has recently been dealing with public backlash for chinese spyware on their phones. With such issues, we might come to the conclusion that people are filing more and more complaints against these companies for any tiny issues with their mobile devices. 
 
-In regards to the Benford analysis, we can see that per both number of reviews per product and number of reviews per brand, neither follow a Benford distribution. Now, if we think about it, going through reviews, often times, we can find reviews that are insincere or fake, where people either write something as a joke or there is a computer automated response that makes no sense. It is possible that these sorts of responses skew the distribution of the data slightly. Something like this is worth looking into more detail about. 
+In regards to the Benford analysis, we can see that both number of reviews per product and number of reviews per brand, neither follow a Benford distribution. Now, if we think about it, going through reviews, often times, we can find reviews that are insincere or fake, where people either write something as a joke or there is a computer automated response that makes no sense. It is possible that these sorts of responses skew the distribution of the data slightly. Something like this is worth looking into more detail about. 
 
 # Future Works
 One of the things we can potentially look at is a more in-depth review of each of the phone brands. Companies like Samsung, Apple, and LG are bound to have significantly different reviews and types of reviews compared to one another. 
@@ -372,3 +372,7 @@ Another aspect worth looking into is creating a model for predicting either rati
 
 # Acknowledgement
 Special thank you to Professor Wright for spending so much time teaching and creating so many unique assignments and projects this semester. 
+
+# Reference
+[1] https://www.kaggle.com/PromptCloudHQ/amazon-reviews-unlocked-mobile-phones
+

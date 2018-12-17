@@ -19,7 +19,6 @@ output: ioslides_presentation
     + Unique characteristics of reviews?
 
 ```{r, include = FALSE}
-setwd("/Users/andrewzhang/Desktop/School/Graduate/MA615/MA615 Final Project")
 amazon <- read.csv("Amazon_Unlocked_Mobile.csv")
 ```
 
